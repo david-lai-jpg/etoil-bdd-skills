@@ -1,0 +1,5 @@
+{
+  "name": "specformula-ts",
+  "version": "0.1.0",
+  "description": "SpecFormula BDD testing methodology for TypeScript full-stack development. Teaches the six-instruction test pattern (TimeControl, EntitySetup, ApiCall, ResponseValidate, EntityValidate, EntityNonExistenceValidate) across NestJS, Hono, Prisma, Drizzle, MikroORM, Playwright, Vue, and React."
+}

@@ -1,0 +1,180 @@
+{
+  "skill_name": "spec-driven-test",
+  "evals": [
+    {
+      "id": 1,
+      "name": "backend-prisma-create-endpoint",
+      "prompt": "Write tests for a POST /api/bookings endpoint that creates a new booking. The booking needs a userId, roomId, startTime, and endTime. If the room is already booked during that time range, it should return 409. The project uses NestJS + Prisma + PostgreSQL + Vitest. There's a Booking model in the Prisma schema with those fields plus an 'id' (autoincrement) and 'createdAt' timestamp. There's also a User and Room model. Don't write the implementation — just the test file.",
+      "expected_output": "A complete test file that: (1) uses vi.useFakeTimers for createdAt assertions, (2) sets up User and Room via prisma.user.create/prisma.room.create (NOT via API), (3) makes POST request via supertest, (4) asserts status 201 + response body, (5) queries prisma.booking.findUnique to verify DB persistence, (6) has a conflict test that creates an overlapping booking first then asserts 409 + no second booking in DB, (7) has an unauthenticated test asserting 401",
+      "assertions": [
+        {
+          "name": "uses-entity-setup-not-api",
+          "description": "Test data (users, rooms) created via prisma.*.create(), not via API calls",
+          "type": "content_check"
+        },
+        {
+          "name": "has-entity-validate",
+          "description": "After the POST, queries the database (prisma.booking.findUnique or similar) and asserts the record exists",
+          "type": "content_check"
+        },
+        {
+          "name": "has-entity-non-existence-on-error",
+          "description": "The 409 conflict test verifies no duplicate booking was created in the DB",
+          "type": "content_check"
+        },
+        {
+          "name": "uses-time-control",
+          "description": "Uses vi.useFakeTimers() and vi.setSystemTime() for deterministic timestamp testing",
+          "type": "content_check"
+        },
+        {
+          "name": "uses-supertest-not-fetch",
+          "description": "Uses supertest (request(app.getHttpServer())) for HTTP calls, not raw fetch",
+          "type": "content_check"
+        },
+        {
+          "name": "has-auth-test",
+          "description": "Includes a test for unauthenticated access (401)",
+          "type": "content_check"
+        },
+        {
+          "name": "correct-test-structure",
+          "description": "Uses describe/it blocks with success and failure case groupings",
+          "type": "content_check"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "drizzle-hono-stack-detection",
+      "prompt": "I need tests for my expense tracking API. Here's the route:\n\n```typescript\n// src/routes/expenses.ts\nimport { Hono } from 'hono'\nimport { db } from '../db'\nimport { expenses, categories } from '../db/schema'\nimport { eq } from 'drizzle-orm'\nimport { authMiddleware } from '../middleware/auth'\n\nconst app = new Hono()\n\napp.post('/expenses', authMiddleware, async (c) => {\n  const { amount, categoryId, description, date } = await c.req.json()\n  if (!amount || !categoryId) return c.json({ error: 'amount and categoryId required' }, 400)\n\n  const userId = c.get('userId')\n  const [expense] = await db.insert(expenses).values({\n    amount, categoryId, description, date, userId,\n  }).returning()\n\n  return c.json(expense, 201)\n})\n```\n\nThe drizzle schema has expenses table with id, amount (numeric), categoryId, description, date, userId, createdAt. Write comprehensive tests.",
+      "expected_output": "Tests that use Hono's app.request() (NOT supertest), Drizzle's db.insert/db.select for entity setup and validation, correct Drizzle query syntax (eq() from drizzle-orm), and follow all six instructions",
+      "assertions": [
+        {
+          "name": "uses-hono-request",
+          "description": "Uses app.request() or similar Hono test pattern, NOT supertest",
+          "type": "content_check"
+        },
+        {
+          "name": "uses-drizzle-for-setup",
+          "description": "EntitySetup uses db.insert(table).values() with Drizzle syntax",
+          "type": "content_check"
+        },
+        {
+          "name": "uses-drizzle-for-validation",
+          "description": "EntityValidate uses db.select().from(table).where(eq()) with Drizzle syntax",
+          "type": "content_check"
+        },
+        {
+          "name": "parses-json-response",
+          "description": "Correctly parses Hono's Response object via .json() (not accessing .body directly like supertest)",
+          "type": "content_check"
+        },
+        {
+          "name": "has-entity-validate-after-create",
+          "description": "After POST, queries the expenses table to verify the record was persisted",
+          "type": "content_check"
+        },
+        {
+          "name": "has-validation-error-test",
+          "description": "Tests missing amount/categoryId returns 400 and nothing persisted",
+          "type": "content_check"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "review-catches-missing-db-validation",
+      "prompt": "Review this test file and tell me what's wrong:\n\n```typescript\nimport { describe, it, expect, beforeAll, afterAll } from 'vitest'\nimport request from 'supertest'\nimport { app } from '../app'\nimport { prisma } from '../db'\n\ndescribe('POST /api/orders', () => {\n  let token: string\n\n  beforeAll(async () => {\n    // Create a test user via API\n    const userRes = await request(app.getHttpServer())\n      .post('/api/users')\n      .send({ name: 'Alice', email: 'alice@test.com', password: 'pass123' })\n    token = userRes.body.token\n  })\n\n  it('creates an order', async () => {\n    const res = await request(app.getHttpServer())\n      .post('/api/orders')\n      .set('Authorization', `Bearer ${token}`)\n      .send({ productId: 1, quantity: 2 })\n\n    expect(res.status).toBe(201)\n    expect(res.body.totalPrice).toBe(29.98)\n  })\n\n  it('rejects order with zero quantity', async () => {\n    const res = await request(app.getHttpServer())\n      .post('/api/orders')\n      .set('Authorization', `Bearer ${token}`)\n      .send({ productId: 1, quantity: 0 })\n\n    expect(res.status).toBe(400)\n  })\n})\n```",
+      "expected_output": "Should flag: (1) CRITICAL: test data setup via API (beforeAll creates user via POST, should use prisma.user.create), (2) CRITICAL: no EntityValidate after successful POST (never checks if order exists in DB), (3) HIGH: no EntityNonExistenceValidate on error case (400 test doesn't verify no order was created), (4) HIGH: hardcoded totalPrice (29.98) is brittle, (5) MEDIUM: no time control if order has createdAt",
+      "assertions": [
+        {
+          "name": "flags-api-setup-coupling",
+          "description": "Identifies that the user is created via API call (POST /api/users) instead of direct DB insert",
+          "type": "content_check"
+        },
+        {
+          "name": "flags-missing-entity-validate",
+          "description": "Points out that the successful create test never queries the DB to verify the order was persisted",
+          "type": "content_check"
+        },
+        {
+          "name": "flags-missing-non-existence-check",
+          "description": "Points out that the error case test doesn't verify no order was accidentally created",
+          "type": "content_check"
+        },
+        {
+          "name": "suggests-prisma-create",
+          "description": "Suggests using prisma.user.create() for setup instead of the API call",
+          "type": "content_check"
+        },
+        {
+          "name": "uses-severity-levels",
+          "description": "Uses severity indicators (CRITICAL, HIGH, MEDIUM, etc.) to prioritize findings",
+          "type": "content_check"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "bug-fix-gear-no-ceremony",
+      "prompt": "Users are reporting that when they update their profile email, the old email is returned in the response but the new email is saved in the database. The endpoint is PATCH /api/users/profile and it uses NestJS + Prisma. Can you help me write a test that reproduces this bug?",
+      "expected_output": "Should NOT demand PRDs, specs, or the full three-spec ceremony. Should immediately guide writing a reproducing test: (1) EntitySetup for a user, (2) PATCH request with new email, (3) ResponseValidate checking the response has the NEW email, (4) EntityValidate querying the DB to verify the NEW email is stored, (5) the test should capture the exact bug described — response shows old email while DB has new email",
+      "assertions": [
+        {
+          "name": "no-spec-ceremony",
+          "description": "Does NOT ask for PRDs, acceptance criteria, or demand creating an OpenAPI spec first",
+          "type": "content_check"
+        },
+        {
+          "name": "reproduces-the-specific-bug",
+          "description": "The test specifically checks that the response email matches the updated email (catching the reported discrepancy)",
+          "type": "content_check"
+        },
+        {
+          "name": "has-both-response-and-db-check",
+          "description": "Test checks both the API response AND the database, which is exactly how to diagnose this bug",
+          "type": "content_check"
+        },
+        {
+          "name": "uses-entity-setup",
+          "description": "Creates the initial user via prisma.user.create, not via API",
+          "type": "content_check"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "vue-component-test-with-store",
+      "prompt": "Write a component test for this Vue 3 component. It's a leave request form where employees can submit leave. Uses Pinia for state management. The LeaveRequestForm.vue component has a date picker (start/end date), a reason textarea, and a submit button. When submitted, it calls the store's submitLeaveRequest action. Write the test using Vitest + @vue/test-utils.",
+      "expected_output": "Component test that: (1) mounts with createTestingPinia, (2) seeds initial store state, (3) fills the form fields, (4) clicks submit, (5) asserts BOTH the rendered success message AND the store action was called with correct arguments. Should NOT use the backend six-instruction names literally — should adapt to frontend terminology.",
+      "assertions": [
+        {
+          "name": "uses-testing-pinia",
+          "description": "Mounts with createTestingPinia({ createSpy: vi.fn })",
+          "type": "content_check"
+        },
+        {
+          "name": "seeds-store-state",
+          "description": "Seeds the Pinia store with initial state (e.g., current user)",
+          "type": "content_check"
+        },
+        {
+          "name": "asserts-rendered-output",
+          "description": "Checks the DOM/rendered text after interaction (ResponseValidate equivalent)",
+          "type": "content_check"
+        },
+        {
+          "name": "asserts-store-state",
+          "description": "Checks the store action was called or store state changed (EntityValidate equivalent — verifies the data layer, not just the UI)",
+          "type": "content_check"
+        },
+        {
+          "name": "uses-data-testid-or-accessible-selectors",
+          "description": "Uses data-testid attributes or accessible selectors, not CSS class names",
+          "type": "content_check"
+        }
+      ]
+    }
+  ]
+}
