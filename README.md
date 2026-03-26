@@ -1,165 +1,163 @@
 # etoil-bdd-skills
 
-**Stop writing tests that lie.** A [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins) that teaches AI assistants to write tests that verify both the API response **and** the database state.
+> Your tests pass. Your database is empty. Nobody noticed until production.
 
-Your API returns 200. Your test passes. But nothing was saved to the database. This plugin makes sure that never happens again.
+A [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins) that teaches Claude to write tests that **actually verify your data was saved** — not just that the API said "ok".
 
-## What is BDD?
+Works with **Prisma / Drizzle / MikroORM**, **NestJS / Hono**, **Vue / React**, **Vitest**, and **Playwright** out of the box.
 
-**Behavior-Driven Development** (BDD) is a testing philosophy where tests describe _what the system does_, not how it's implemented. Instead of testing internal functions in isolation, BDD tests exercise real behaviors: HTTP requests, user interactions, and the state changes they produce.
-
-This plugin takes BDD further with a **six-instruction pattern** — a structured approach that ensures every test verifies the full round trip: request in, response out, data persisted. No more tests that pass while the database silently drops your writes.
-
-## The Problem
-
-Most test suites only check the API response:
+## The Bug Nobody Writes Tests For
 
 ```typescript
-const res = await request(app).post('/todos').send({ title: 'Buy milk' })
-expect(res.status).toBe(201) // passes even if nothing was saved to the DB
-```
-
-Transaction rollback bugs, silent DB errors, caching layers returning stale success — all invisible to response-only tests.
-
-## The Fix: Six Instructions
-
-Every test follows this structure:
-
-| # | Instruction | What It Does |
-|---|---|---|
-| 1 | **TimeControl** | Mock `Date.now()` for deterministic timestamps |
-| 2 | **EntitySetup** | Insert test data directly via ORM — never through the API under test |
-| 3 | **ApiCall** | Make the HTTP request |
-| 4 | **ResponseValidate** | Assert status code + response body |
-| 5 | **EntityValidate** | Query the DB and assert the record exists with correct values |
-| 6 | **EntityNonExistenceValidate** | For error cases, verify nothing was accidentally persisted |
-
-Steps 5 and 6 are the ones everybody skips. This plugin won't let Claude skip them.
-
-### Before vs. After
-
-```typescript
-// BEFORE — response-only, silently broken
+// This test passes. The database is empty. You ship it.
 it('creates a todo', async () => {
   const res = await request(app).post('/todos').send({ title: 'Buy milk' })
-  expect(res.status).toBe(201) // "passes" even if DB write failed
-})
-
-// AFTER — both-layer verification
-it('creates and persists a todo', async () => {
-  const alice = await prisma.user.create({                // EntitySetup
-    data: { name: 'Alice', email: 'alice@test.com' },
-  })
-
-  const res = await request(app.getHttpServer())          // ApiCall
-    .post('/todos')
-    .set('Authorization', `Bearer ${token}`)
-    .send({ title: 'Buy milk' })
-
-  expect(res.status).toBe(201)                            // ResponseValidate
-  expect(res.body.title).toBe('Buy milk')
-
-  const todo = await prisma.todo.findUnique({             // EntityValidate
-    where: { id: res.body.id },
-  })
-  expect(todo).not.toBeNull()
-  expect(todo!.title).toBe('Buy milk')
+  expect(res.status).toBe(201) // <-- transaction silently rolled back. nothing saved.
 })
 ```
 
-## Installation
+Transaction rollback bugs. Silent DB errors. Caching layers returning stale success. ORMs swallowing constraint violations. **All invisible to response-only tests.**
+
+This plugin adds one rule Claude will never skip: **after every mutating API call, query the database and prove the data is there.**
+
+## Quick Start
 
 ```bash
 claude plugin add https://github.com/user/etoil-bdd-skills
 ```
 
-## How It Works
+That's it. The skills activate automatically when Claude works with test files.
 
-The plugin ships two skills that activate automatically when Claude works with test files:
+## What Changes
 
-### `spec-driven-test` — Writing Tests
+```typescript
+// BEFORE — what Claude writes without this plugin
+it('creates a todo', async () => {
+  const res = await request(app).post('/todos').send({ title: 'Buy milk' })
+  expect(res.status).toBe(201)
+  expect(res.body.title).toBe('Buy milk')
+  // "Ship it!" — no one checked the database
+})
+```
 
-Guides writing backend API tests, E2E tests, and component tests. Reads the room before applying methodology:
+```typescript
+// AFTER — what Claude writes WITH this plugin
+it('creates and persists a todo', async () => {
+  // Setup: seed data directly via ORM, never through the API under test
+  const alice = await prisma.user.create({
+    data: { name: 'Alice', email: 'alice@test.com' },
+  })
 
-- **Spike?** Stays quiet. No test ceremony during prototyping.
-- **Bug fix?** Reproduce the bug as a failing test first. No spec overhead.
-- **Productionizing a spike?** Reads existing code, scaffolds tests from it.
-- **New feature?** Full methodology — conversational spec extraction, then test-first.
+  // Act: make the HTTP request
+  const res = await request(app.getHttpServer())
+    .post('/todos')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ title: 'Buy milk' })
 
-Never demands PRDs or formal specs. Extracts what it needs by asking: _"What endpoints does this need? What data gets stored? What can go wrong?"_
+  // Assert the response
+  expect(res.status).toBe(201)
+  expect(res.body.title).toBe('Buy milk')
 
-### `spec-test-review` — Reviewing Tests
+  // Assert the DATABASE — the part everyone skips
+  const todo = await prisma.todo.findUnique({ where: { id: res.body.id } })
+  expect(todo).not.toBeNull()
+  expect(todo!.title).toBe('Buy milk')
+  expect(todo!.userId).toBe(alice.id)
+})
+```
 
-Review checklist that flags real issues with `file:line` citations:
+## The Six-Instruction Pattern
 
-- Missing DB validation after mutating API calls
-- Test data created via API instead of direct DB insert (test coupling)
-- Hardcoded timestamps without time mocking
-- Missing auth scenarios (unauthenticated, wrong role)
+Every test follows this structure. Steps 5 and 6 are the ones that catch real production bugs.
+
+| # | Instruction | Why It Matters |
+|---|---|---|
+| 1 | **TimeControl** | Mock `Date.now()` — no more flaky timestamps |
+| 2 | **EntitySetup** | Seed data via ORM, not the API under test — no test coupling |
+| 3 | **ApiCall** | Make the HTTP request |
+| 4 | **ResponseValidate** | Assert status + body |
+| 5 | **EntityValidate** | **Query the DB. Prove the data exists.** |
+| 6 | **EntityNonExistenceValidate** | On errors, prove nothing leaked into the DB |
+
+### What is BDD?
+
+**Behavior-Driven Development** tests _what the system does_, not how it's implemented. Instead of testing internal functions, BDD tests exercise real behaviors: HTTP requests, user interactions, and the state changes they produce.
+
+This plugin extends BDD with **both-layer verification** — every test checks both the output (API response) and the side effect (database state). Because an API returning 200 and a row actually existing in Postgres are two very different things.
+
+## Context-Aware — Not a Process Cop
+
+The plugin reads the room before applying methodology:
+
+| Situation | What Claude Does |
+|---|---|
+| Prototyping / spike | Stays quiet. No test ceremony. |
+| Bug fix | Reproduce the bug as a failing test. No spec overhead. |
+| Productionizing a spike | Read existing code, scaffold tests from it. |
+| New feature | Full methodology — extract specs by asking, then test-first. |
+
+Never demands PRDs. Never blocks you. Extracts what it needs by asking three questions: _What endpoints? What data? What can fail?_
 
 ## Supported Stacks
 
-Auto-detects your stack from `package.json` and loads the right patterns:
+Auto-detects from `package.json` and loads the right adapter:
 
-| Layer | Supported |
+| | Supported |
 |---|---|
 | **ORM** | Prisma, Drizzle, MikroORM |
 | **Backend** | NestJS, Hono |
-| **Frontend** | Vue 3, React |
+| **Frontend** | Vue 3 (Composition API), React |
 | **Test Runner** | Vitest |
 | **E2E** | Playwright |
-| **State** | Pinia (Vue), Zustand (React) |
+| **State** | Pinia, Zustand |
 
-## Frontend Tests Too
+## Works for Frontend Too
 
-The six instructions adapt to frontend vocabulary — same principles, different API:
+Same principle, different vocabulary: **verify the action AND the resulting state.**
 
 | Backend | E2E (Playwright) | Component (Vitest) |
 |---|---|---|
-| TimeControl | `page.clock.setFixedTime()` | `vi.useFakeTimers()` |
-| EntitySetup | Seed via test API or direct DB | Mock API via MSW, seed store |
-| ApiCall | `page.fill()` + `page.click()` | `userEvent.click(button)` |
-| ResponseValidate | `expect(page.getByText(...)).toBeVisible()` | `expect(screen.getByText(...))` |
-| EntityValidate | Intercept API response or query DB | `expect(store.todos).toHaveLength(1)` |
+| DB insert via ORM | Seed via test API | Mock API via MSW |
+| HTTP request | `page.click()` | `userEvent.click()` |
+| Assert response body | `expect(locator).toBeVisible()` | `expect(screen.getByText(...))` |
+| **Query the DB** | **Intercept API / query DB** | **`expect(store.items).toHaveLength(1)`** |
 
-The principle is the same: **verify the action AND the resulting state**.
+## What's In the Box
 
-## Constraint Helpers
+**Two skills** that activate automatically:
 
-For dynamic values (auto-generated IDs, timestamps), the plugin teaches constraint-based assertions:
+**`spec-driven-test`** — Guides writing tests. Detects your stack, loads the right ORM adapter, applies the six-instruction pattern. Includes reference docs for every supported ORM, HTTP client, and frontend framework.
 
-```typescript
-expect(res.body.id).toSatisfy(isNum)
-expect(res.body.age).toSatisfy(between(18, 65))
-expect(res.body.status).toSatisfy(oneOf('PENDING', 'APPROVED'))
-expect(res.body.createdAt).toSatisfy(sameTime('2026-01-27T10:00:00Z'))
-```
+**`spec-test-review`** — Reviews existing tests. Flags missing DB validation, test coupling, hardcoded timestamps, missing auth scenarios. Cites `file:line` with severity levels.
 
-Full helper source in `references/constraints.md`, ready to copy into your project.
+**Plus:** constraint helpers for dynamic values, backend test templates, and 5 eval scenarios for quality assurance.
 
-## Plugin Structure
+<details>
+<summary>Plugin structure</summary>
 
 ```
 etoil-bdd-skills/
 ├── plugin.json
-├── spec-driven-test/             <- Writing tests
-│   ├── SKILL.md                  <- Decision tree entry point
+├── spec-driven-test/              <- Writing tests
+│   ├── SKILL.md                   <- Decision tree entry point
 │   ├── references/
-│   │   ├── six-instructions.md   <- Deep dive with good/bad examples
-│   │   ├── three-specs.md        <- API + entity + test spec discipline
-│   │   ├── constraints.md        <- Constraint assertion helpers
-│   │   ├── time-control.md       <- vi.useFakeTimers patterns
-│   │   ├── test-isolation.md     <- Cleanup strategies per ORM
-│   │   ├── adapters/             <- Prisma, Drizzle, MikroORM
-│   │   ├── frontend/             <- Playwright E2E, Vue, React
-│   │   └── http-clients/         <- supertest, Hono
+│   │   ├── six-instructions.md    <- The methodology, with examples
+│   │   ├── three-specs.md         <- API + entity + test spec discipline
+│   │   ├── constraints.md         <- Assertion helpers for dynamic values
+│   │   ├── time-control.md        <- vi.useFakeTimers patterns
+│   │   ├── test-isolation.md      <- Cleanup strategies per ORM
+│   │   ├── adapters/              <- Prisma, Drizzle, MikroORM
+│   │   ├── frontend/              <- Playwright, Vue, React
+│   │   └── http-clients/          <- supertest, Hono
 │   └── templates/
 │       └── backend-test.ts
-├── spec-test-review/             <- Reviewing tests
+├── spec-test-review/              <- Reviewing tests
 │   └── SKILL.md
 └── evals/
-    └── evals.json                <- 5 eval scenarios
+    └── evals.json                 <- 5 eval scenarios
 ```
+
+</details>
 
 ## License
 
