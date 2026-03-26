@@ -1,4 +1,4 @@
-# etoil-bdd-skills
+# Etoil BDD — Full-Stack Test Methodology for TypeScript
 
 > Your tests pass. Your database is empty. Nobody noticed until production.
 
@@ -23,7 +23,7 @@ This plugin adds one rule Claude will never skip: **after every mutating API cal
 ## Quick Start
 
 ```bash
-claude plugin add https://github.com/user/etoil-bdd-skills
+claude plugin add https://github.com/david-lai-jpg/etoil-bdd-skills
 ```
 
 That's it. The skills activate automatically when Claude works with test files.
