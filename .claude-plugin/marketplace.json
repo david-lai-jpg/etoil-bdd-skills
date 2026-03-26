@@ -1,0 +1,15 @@
+{
+  "name": "etoil-bdd-skills",
+  "owner": {
+    "name": "David Lai",
+    "url": "https://github.com/david-lai-jpg"
+  },
+  "plugins": [
+    {
+      "name": "etoil-bdd-skills",
+      "source": "./",
+      "description": "BDD testing methodology for TypeScript full-stack development. Six-instruction test pattern with both-layer verification (API response + database state) across NestJS, Hono, Prisma, Drizzle, MikroORM, Playwright, Vue, and React.",
+      "version": "0.1.0"
+    }
+  ]
+}

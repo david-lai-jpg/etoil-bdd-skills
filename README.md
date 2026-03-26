@@ -22,8 +22,11 @@ This plugin adds one rule Claude will never skip: **after every mutating API cal
 
 ## Quick Start
 
-```bash
-claude plugin add https://github.com/david-lai-jpg/etoil-bdd-skills
+In Claude Code, run:
+
+```
+/plugin marketplace add david-lai-jpg/etoil-bdd-skills
+/plugin install etoil-bdd-skills@etoil-bdd-skills
 ```
 
 That's it. The skills activate automatically when Claude works with test files.
@@ -137,6 +140,8 @@ Same principle, different vocabulary: **verify the action AND the resulting stat
 
 ```
 etoil-bdd-skills/
+├── .claude-plugin/
+│   └── marketplace.json           <- Marketplace manifest
 ├── plugin.json
 ├── spec-driven-test/              <- Writing tests
 │   ├── SKILL.md                   <- Decision tree entry point
