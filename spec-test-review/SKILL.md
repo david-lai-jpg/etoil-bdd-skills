@@ -1,9 +1,9 @@
 ---
 name: spec-test-review
-description: "Review checklist for test quality following SpecFormula methodology. Use when reviewing test files, PRs with test changes, asked to 'review tests', 'check test coverage', 'review this PR', 'code review', or 'pre-commit check'. Also trigger proactively after writing tests with spec-driven-test to self-check quality before claiming done. Verifies both-layer assertions, test data isolation, time control usage, and spec consistency. Use this skill whenever the user mentions reviewing, auditing, or validating test quality."
+description: "Review checklist for test quality following the six-instruction BDD methodology. Use when reviewing test files, PRs with test changes, asked to 'review tests', 'check test coverage', 'review this PR', 'code review', or 'pre-commit check'. Also trigger proactively after writing tests with spec-driven-test to self-check quality before claiming done. Verifies both-layer assertions, test data isolation, time control usage, and spec consistency. Use this skill whenever the user mentions reviewing, auditing, or validating test quality."
 ---
 
-# SpecFormula Test Review Checklist
+# BDD Test Review Checklist
 
 Apply this checklist when reviewing test files or PRs. Cite specific `file:line` references for each finding and suggest fixes using the project's actual ORM/framework syntax.
 

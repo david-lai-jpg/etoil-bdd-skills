@@ -1,5 +1,5 @@
 /**
- * SpecFormula Backend Test Template
+ * Backend Test Template
  *
  * Six-instruction structure:
  * 1. TimeControl — mock time if the feature involves timestamps

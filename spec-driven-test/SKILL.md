@@ -1,11 +1,11 @@
 ---
 name: spec-driven-test
-description: "Guides writing backend API tests, E2E tests, and component tests following the SpecFormula six-instruction methodology. Use whenever writing or modifying test files (.test.ts, .spec.ts), implementing TDD, creating new API endpoints or data models, asked to 'write tests', 'add test coverage', 'test this feature', or when the user creates a new controller/route/entity without corresponding tests. Covers NestJS, Hono, Prisma, Drizzle, MikroORM backends with Vitest, plus Playwright E2E and Vue 3/React component tests. Also use when the user says 'productionize this', 'this spike is ready', 'add tests before we ship', or mentions BDD, test-driven development, or spec-driven development."
+description: "Guides writing backend API tests, E2E tests, and component tests following the six-instruction BDD methodology. Use whenever writing or modifying test files (.test.ts, .spec.ts), implementing TDD, creating new API endpoints or data models, asked to 'write tests', 'add test coverage', 'test this feature', or when the user creates a new controller/route/entity without corresponding tests. Covers NestJS, Hono, Prisma, Drizzle, MikroORM backends with Vitest, plus Playwright E2E and Vue 3/React component tests. Also use when the user says 'productionize this', 'this spike is ready', 'add tests before we ship', or mentions BDD, test-driven development, or spec-driven development."
 ---
 
-# SpecFormula Test Methodology for TypeScript
+# Six-Instruction BDD Test Methodology for TypeScript
 
-A methodology-first testing skill adapted from SpecFormula ISA. Tests are plain Vitest/Playwright — no Gherkin DSL, no code generation. The skill teaches a **six-instruction pattern** that ensures every test verifies both the API response AND the database state.
+A methodology-first testing skill. Tests are plain Vitest/Playwright — no Gherkin DSL, no code generation. The skill teaches a **six-instruction pattern** that ensures every test verifies both the API response AND the database state.
 
 ## Step 0: Assess the Situation
 

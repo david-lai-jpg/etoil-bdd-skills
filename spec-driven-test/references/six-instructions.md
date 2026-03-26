@@ -131,7 +131,7 @@ const deleted = await prisma.todo.findUnique({ where: { id: todoId } })
 expect(deleted).toBeNull()
 ```
 
-**This is the most commonly skipped step.** Most test suites only check the API response. The SpecFormula methodology treats response-only tests as incomplete.
+**This is the most commonly skipped step.** Most test suites only check the API response. This methodology treats response-only tests as incomplete.
 
 ## 6. EntityNonExistenceValidate
 
